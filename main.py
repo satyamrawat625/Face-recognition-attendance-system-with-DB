@@ -2,7 +2,7 @@ from datetime import datetime
 
 import cv2
 import os
-from flask import Flask, request, render_template, url_for
+from flask import Flask, request, render_template, url_for, redirect
 import numpy as np
 
 import pickle
@@ -199,17 +199,58 @@ def add():
         if cv2.waitKey(1) & 0xFF == ord('c'): #to exit
             break
     cv2.destroyAllWindows()
-    print('Training Model')
-    trainModel.train_model()
+
     return render_template('userAdded.html', redirect_url= url_for('home'))
 
 
-@app.route('/attendanceTod', methods=['GET', 'POST'])
+@app.route('/attendanceTod', methods=['GET'])
 def showAttendance():
     ID, names, times, l = extract_attendance()
     return render_template('attendanceTod.html', ID=ID, names=names, times=times, l=l, totalreg=totalreg(),
                            datetoday2=datetoday2())
 
+@app.route('/trained', methods=['GET', 'POST'])
+def trainModelOnImg():
+    print('Training Model')
+    trainModel.train_model()
+    return render_template('trained.html', redirect_url= url_for('home'))
+
+
+#Manually update attendance
+def search_user(student_id):
+    ref = db.reference('Students')
+    user_ref = ref.child(student_id)
+    user_data = user_ref.get()
+    return user_data
+
+def update_attendance(student_id, new_attendance):
+    ref = db.reference(f'Students/{student_id}')
+    ref.child('attendance').set(new_attendance)
+    ref.child('last_attendance_time').set(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    student_name= ref.get().get('username')
+    print(student_name)
+
+    add_attendance(f'{student_id}_{student_name}')
+
+# page to enter user id & attendance
+@app.route('/changeDetails', methods=['GET', 'POST'])
+def manuallyAddAttendance():
+    student_id = request.form['student_id']
+    new_attendance = int(request.form['new_attendance'])
+
+    user_data = search_user(student_id)
+
+    if user_data is not None:
+        update_attendance(student_id, new_attendance)
+        return redirect('attendanceTod')
+    else:
+        return render_template('user_not_found.html')
+
+# manually update attendance of student by searching using student id
+@app.route('/manualUpdate', methods=['GET', 'POST'])
+def manualUpdate():
+    return render_template('manualUpdate.html')
 
 #### Our main function which runs the Flask App
 if __name__ == '__main__':

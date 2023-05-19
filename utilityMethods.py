@@ -35,7 +35,7 @@ def extract_attendance():
     return  ID,names, times, l
 
 
-#### Add Attendance of a specific user
+#### Add Attendance of a into CSV file
 def add_attendance(name):
     userid = name.split('_')[0]
     username = name.split('_')[1]
@@ -46,3 +46,4 @@ def add_attendance(name):
     if int(userid) not in list(df['ID']):
         with open(f'Attendance/Attendance-{datetoday()}.csv', 'a') as f:
             f.write(f'\n{userid},{username},{current_time}')
+

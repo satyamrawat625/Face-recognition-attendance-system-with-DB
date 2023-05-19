@@ -47,6 +47,7 @@ def train_model():
     classNames = []
 
     myList = os.listdir(path)  # to extract list of names of all images
+    print("Users found")
     print(myList)
 
     for cl in myList:
@@ -66,3 +67,4 @@ def train_model():
     pickle.dump(encodeListKnownWithIds, file)
     file.close()
     print("File Saved")
+    print("Model trained")

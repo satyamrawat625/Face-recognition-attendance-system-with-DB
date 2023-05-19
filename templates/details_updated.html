@@ -15,11 +15,17 @@
     <title>Face Recognition attendance system</title>
 </head>
 <body>
-      <img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Eo_circle_green_checkmark.svg" style="height:400px;width:200px; display: block ; margin : auto" alt="Attendance marked">
-
+     <h1>Update Attendance</h1>
+    <form method="POST" action="/manuallyChangeDetails">
+        <label for="student_id">Student ID:</label>
+        <input type="text" id="student_id" name="student_id" required><br><br>
+        <label for="new_attendance">New Attendance:</label>
+        <input type="number" id="new_attendance" name="new_attendance" required><br><br>
+        <input type="submit" value="Update Attendance">
+    </form>
     <div
         style="font-size: 24px;font-weight: bold; background-color: purple ; border-radius: 10px;width:490px;padding: 10px;margin-top: 30px;margin-bottom: 30px; display: block ; margin : auto"
-        class='btn btn-primary'> User Added <i class="material-icons">beenhere</i>
+        class='btn btn-primary'> Details Updated <i class="material-icons">beenhere</i>
     </div>
 
     <script>
