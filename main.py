@@ -16,6 +16,10 @@ from firebase_admin import credentials
 from firebase_admin import db
 from firebase_admin import storage
 
+import time
+from datetime import datetime
+
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -66,6 +70,7 @@ def home():
 
 #### This function will run when we click on Take Attendance Button
 @app.route('/start', methods=['GET'])
+@app.route('/start', methods=['GET'])
 def start():
 
     if 'EncodeFile.pkl' not in os.listdir('static'):
@@ -85,6 +90,9 @@ def start():
     # print(classNames)
     print("Encode File Loaded")
 
+    start_time = None
+    verified_id = None
+
     while True:
         success, img = cap.read()
 
@@ -94,13 +102,16 @@ def start():
         facesCurFrame = face_recognition.face_locations(imgS)
         encodesCurFrame = face_recognition.face_encodings(imgS, facesCurFrame)
 
+        if len(facesCurFrame) == 0:
+            start_time = None
+            verified_id = None
 
         for encodeFace, faceLoc in zip(encodesCurFrame, facesCurFrame):
             # matches = face_recognition.compare_faces(encodeListKnown, encodeFace)
             faceDis = face_recognition.face_distance(encodeListKnown, encodeFace)
             # print(faceDis)
 
-            if len(faceDis) > 0:#faces exist
+            if len(faceDis) > 0:  # faces exist
 
                 matchIndex = np.argmin(faceDis)
 
@@ -108,23 +119,26 @@ def start():
                     uID = (re.split('_', classNames[matchIndex]))[0]  # stores uID
                     name = ((re.split('_', classNames[matchIndex]))[1]).upper()
 
-                    add_attendance(classNames[matchIndex].upper())
+                    if verified_id != uID:
+                        start_time = time.time()
+                        verified_id = uID
 
-                    # print(uID)
-                    studentInfoFromDb = db.reference(f'Students/{uID}').get()
-                    # print(studentInfoFromDb['attendance'])
+                    elapsed_time = time.time() - start_time
 
-                    # Update attendance
-                    datetimeObject = datetime.strptime(studentInfoFromDb['last_attendance_time'],
-                                                       "%Y-%m-%d %H:%M:%S")
-                    secondsElapsed = (datetime.now() - datetimeObject).total_seconds()
-                    # print(secondsElapsed)
+                    if elapsed_time > 5:
+                        add_attendance(classNames[matchIndex].upper())
 
-                    if secondsElapsed > 72000:  # attendance has not been updated within the last 20 hours
-                        ref = db.reference(f'Students/{uID}')
-                        studentInfoFromDb['attendance'] += 1
-                        ref.child('attendance').set(studentInfoFromDb['attendance'])
-                        ref.child('last_attendance_time').set(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        studentInfoFromDb = db.reference(f'Students/{uID}').get()
+
+                        datetimeObject = datetime.strptime(studentInfoFromDb['last_attendance_time'],
+                                                           "%Y-%m-%d %H:%M:%S")
+                        secondsElapsed = (datetime.now() - datetimeObject).total_seconds()
+
+                        if secondsElapsed > 72000:  # attendance has not been updated within the last 20 hours
+                            ref = db.reference(f'Students/{uID}')
+                            studentInfoFromDb['attendance'] += 1
+                            ref.child('attendance').set(studentInfoFromDb['attendance'])
+                            ref.child('last_attendance_time').set(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
                 else:
                     name = 'Unknown'
@@ -134,18 +148,17 @@ def start():
                 y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
-                cv2.putText(img, f'{name} id_{uID}', (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 0.64, (255, 255, 255),
-                        2)  # to print on webcam window
+                cv2.putText(img, f'{name} id_{uID}', (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 0.64,
+                            (255, 255, 255),
+                            2)  # to print on webcam window
                 # cv2.putText(img, f'{name} ({1- faceDis[matchIndex]:.2f}) {uID}', (x1 + 6, y2 - 6),cv2.FONT_HERSHEY_COMPLEX, 0.64, (255, 255, 255), 2)  # to print on webcam window
 
-
-        cv2.namedWindow('Attendance System',cv2.WINDOW_NORMAL)
+        cv2.namedWindow('Attendance System', cv2.WINDOW_NORMAL)
         cv2.resizeWindow('Attendance System', 900, 600)
         cv2.imshow('Attendance System', img)  # shows webcam
         if cv2.waitKey(1) & 0xFF == ord('c'):
             break
     cv2.destroyAllWindows()
-
 
     return render_template('attendanceMarked.html')
 
