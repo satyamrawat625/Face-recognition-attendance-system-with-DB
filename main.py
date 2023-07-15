@@ -1,5 +1,4 @@
 from datetime import datetime
-
 import cv2
 import os
 from flask import Flask, request, render_template, url_for, redirect
@@ -7,7 +6,7 @@ import numpy as np
 
 import pickle
 import face_recognition
-import re
+import re # for string manipulation
 import trainModel
 from utilityMethods import extract_attendance ,add_attendance ,identify_face ,totalreg ,datetoday2,datetoday
 
@@ -24,22 +23,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 cred = credentials.Certificate("serviceAccountKey.json")
-if not firebase_admin._apps:
+if not firebase_admin._apps:# if the Firebase Admin SDK has not been initialized yet.
     firebase_admin.initialize_app(cred, {
         'databaseURL': os.getenv('DB_URL')
     })
 
-app1= firebase_admin.get_app()
-bucket = storage.bucket(app=app1)
+app1= firebase_admin.get_app() #retrieve firebase app instance
+# bucket = storage.bucket(app=app1) #create reference to cloud stoage bucket
 
-#### Defining Flask App
+# Defining Flask App
 app = Flask(__name__)
 
-#### Initializing VideoCapture object to access WebCam
+# Initializing VideoCapture object to access WebCam
 face_detector = cv2.CascadeClassifier('static/haarcascade_frontalface_default.xml')
 cap = cv2.VideoCapture(0)
 
-#### If these directories don't exist, create them
+# If these directories don't exist, create them
 if not os.path.isdir('Attendance'):
     os.makedirs('Attendance')
 if not os.path.isdir('static/faces'):
@@ -49,17 +48,16 @@ if f'Attendance-{datetoday()}.csv' not in os.listdir('Attendance'):
         f.write('ID,Name,Time')
 
 
-#### extract the face from an image
-def extract_faces(img): #chng
+# extract the face from an image
+def extract_faces(img): #extract faces from image
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     face_points = face_detector.detectMultiScale(gray, 1.3, 5)#haarcascade used to detect face
     return face_points
 
 
-
 ################## ROUTING FUNCTIONS #########################
 
-#### Our main page
+# Our main page
 @app.route('/',endpoint='home')
 def home():
     ID,names,times, l = extract_attendance()
@@ -68,8 +66,7 @@ def home():
 
 
 
-#### This function will run when we click on Take Attendance Button
-@app.route('/start', methods=['GET'])
+# This function will run when we click on Take Attendance Button
 @app.route('/start', methods=['GET'])
 def start():
 
@@ -99,10 +96,10 @@ def start():
         imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
         imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
 
-        facesCurFrame = face_recognition.face_locations(imgS)
-        encodesCurFrame = face_recognition.face_encodings(imgS, facesCurFrame)
+        facesCurFrame = face_recognition.face_locations(imgS)#detects the locations of faces in the current frame (image) using the face_locations
+        encodesCurFrame = face_recognition.face_encodings(imgS, facesCurFrame)#generates face encodings for the faces detected in the current frame using the face_encodings
 
-        if len(facesCurFrame) == 0:
+        if len(facesCurFrame) == 0:#if no face found , reset timer
             start_time = None
             verified_id = None
 
@@ -125,10 +122,10 @@ def start():
 
                     elapsed_time = time.time() - start_time
 
-                    if elapsed_time > 5:
+                    if elapsed_time > 5:#identified for 5 seconds
                         add_attendance(classNames[matchIndex].upper())
 
-                        studentInfoFromDb = db.reference(f'Students/{uID}').get()
+                        studentInfoFromDb = db.reference(f'Students/{uID}').get()#retrieving student information from a database using the Firebase Realtime Database API.
 
                         datetimeObject = datetime.strptime(studentInfoFromDb['last_attendance_time'],
                                                            "%Y-%m-%d %H:%M:%S")
@@ -144,8 +141,8 @@ def start():
                     name = 'Unknown'
                     uID = 'NA'
 
-                y1, x2, y2, x1 = faceLoc
-                y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
+                y1, x2, y2, x1 = faceLoc #unpacks coordinates of detected face faceLoc
+                y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4 # scales the coordinates by 4
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
                 cv2.putText(img, f'{name} id_{uID}', (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 0.64,
@@ -163,10 +160,10 @@ def start():
     return render_template('attendanceMarked.html')
 
 
-#### This function will run when we add a new user, Post as we are submitting data to server
+# This function will run when we add a new user, Post as we are submitting data to server
 @app.route('/add', methods=['GET', 'POST'])
 def add():
-    ref = db.reference('Students')
+    ref = db.reference('Students') #create DB reference
 
     newuserid = request.form['newuserid']
     newusername = request.form['newusername']
@@ -189,7 +186,7 @@ def add():
 
         # 'imagefolder': userimagefolder
         }
-    ref.child(newuserid).set(new_student)
+    ref.child(newuserid).set(new_student)#stores the new_student dictionary under the child node with the key newuserid within the 'Students' node in the Firebase Realtime Database.
 
     cap = cv2.VideoCapture(0)
     i, j = 0, 0
@@ -200,7 +197,7 @@ def add():
             cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 20), 2)
             cv2.putText(frame, f'Images Captured: {i}/20', (30, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 20), 2,
                         cv2.LINE_AA)
-
+            # saves every 5th face
             if j % 5 == 0:
                 name = newuserid + '_' + str(i) + '.jpg'
                 cv2.imwrite(userimagefolder + '/' + name, frame[y:y + h, x:x + w])
@@ -215,7 +212,7 @@ def add():
 
     return render_template('userAdded.html', redirect_url= url_for('home'))
 
-
+# method to show today's attendance
 @app.route('/attendanceTod', methods=['GET'])
 def showAttendance():
     ID, names, times, l = extract_attendance()
@@ -229,11 +226,11 @@ def trainModelOnImg():
     return render_template('trained.html', redirect_url= url_for('home'))
 
 
-#Manually update attendance
+# Manually update attendance
 def search_user(student_id):
     ref = db.reference('Students')
-    user_ref = ref.child(student_id)
-    user_data = user_ref.get()
+    user_ref = ref.child(student_id)#creates reference to particular student_id
+    user_data = user_ref.get()# retrieves data from user_ref
     return user_data
 
 def update_attendance(student_id, new_attendance):
@@ -265,6 +262,6 @@ def manuallyAddAttendance():
 def manualUpdate():
     return render_template('manualUpdate.html')
 
-#### Our main function which runs the Flask App
+# Our main function which runs the Flask App
 if __name__ == '__main__':
     app.run(debug=True)

@@ -12,21 +12,21 @@ from firebase_admin import storage
 
 from dotenv import load_dotenv
 load_dotenv()
-
+# initialise firebase
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': os.getenv('DB_URL'),
-    'storageBucket':os.getenv('BUCKET_URL')
+    'storageBucket': os.getenv('BUCKET_URL')
 })
 
 
 counter=0
 
-#### A function which trains the model on all the faces available in faces folder
+# A function which trains the model on all the faces available in faces folder
 
 def findEncodings(path):
     encodeList = []
-    bucket = storage.bucket()
+    # bucket = storage.bucket()
 
     for subdir in os.listdir(path):
         images_path = os.path.join(path, subdir)

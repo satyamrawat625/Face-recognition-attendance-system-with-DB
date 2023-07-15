@@ -5,27 +5,27 @@ import pandas as pd
 import joblib
 
 
-#### Saving Date today in 2 different formats
+# Saving Date today in 2 different formats
 def datetoday():
     return date.today().strftime("%m_%d_%y")
 
-
+# dd month name -year
 def datetoday2():
     return date.today().strftime("%d-%B-%Y")
 
 
-#### get a number of total registered users
+# get a number of total registered users
 def totalreg():
     return len(os.listdir('static/faces'))
 
 
-#### Identify face using ML model
-def identify_face(facearray):#chng
+# Identify face using ML model
+def identify_face(facearray):#change
     model = joblib.load('static/EncodeFile.pkl')
     return model.predict(facearray)
 
 
-#### Extract info from today's attendance file in attendance folder
+# Extract info from today's attendance file in attendance folder
 def extract_attendance():
     df = pd.read_csv(f'Attendance/Attendance-{datetoday()}.csv')
     ID = df['ID']
@@ -35,7 +35,7 @@ def extract_attendance():
     return  ID,names, times, l
 
 
-#### Add Attendance of a into CSV file
+# Add Attendance of a into CSV file
 def add_attendance(name):
     userid = name.split('_')[0]
     username = name.split('_')[1]
